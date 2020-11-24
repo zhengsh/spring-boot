@@ -20,6 +20,7 @@ import com.mongodb.ConnectionString;
 import org.bson.UuidRepresentation;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.DeprecatedConfigurationProperty;
 
 /**
  * Configuration properties for Mongo.
@@ -59,7 +60,8 @@ public class MongoProperties {
 	private Integer port = null;
 
 	/**
-	 * Mongo database URI. Cannot be set with host, port and credentials.
+	 * Mongo database URI. Cannot be set with host, port, credentials and replica set
+	 * name.
 	 */
 	private String uri;
 
@@ -73,21 +75,22 @@ public class MongoProperties {
 	 */
 	private String authenticationDatabase;
 
-	/**
-	 * GridFS database name.
-	 */
-	private String gridFsDatabase;
+	private final Gridfs gridfs = new Gridfs();
 
 	/**
 	 * Login user of the mongo server. Cannot be set with URI.
 	 */
-
 	private String username;
 
 	/**
 	 * Login password of the mongo server. Cannot be set with URI.
 	 */
 	private char[] password;
+
+	/**
+	 * Required replica set name for the cluster. Cannot be set with URI.
+	 */
+	private String replicaSetName;
 
 	/**
 	 * Fully qualified name of the FieldNamingStrategy to use.
@@ -144,6 +147,14 @@ public class MongoProperties {
 		this.password = password;
 	}
 
+	public String getReplicaSetName() {
+		return this.replicaSetName;
+	}
+
+	public void setReplicaSetName(String replicaSetName) {
+		this.replicaSetName = replicaSetName;
+	}
+
 	public Class<?> getFieldNamingStrategy() {
 		return this.fieldNamingStrategy;
 	}
@@ -180,12 +191,24 @@ public class MongoProperties {
 		this.port = port;
 	}
 
-	public String getGridFsDatabase() {
-		return this.gridFsDatabase;
+	public Gridfs getGridfs() {
+		return this.gridfs;
 	}
 
+	/**
+	 * Return the GridFS database name.
+	 * @return the GridFS database name
+	 * @deprecated since 2.4.0 in favor of {@link Gridfs#getDatabase()}
+	 */
+	@DeprecatedConfigurationProperty(replacement = "spring.data.mongodb.gridfs.database")
+	@Deprecated
+	public String getGridFsDatabase() {
+		return this.gridfs.getDatabase();
+	}
+
+	@Deprecated
 	public void setGridFsDatabase(String gridFsDatabase) {
-		this.gridFsDatabase = gridFsDatabase;
+		this.gridfs.setDatabase(gridFsDatabase);
 	}
 
 	public String getMongoClientDatabase() {
@@ -201,6 +224,36 @@ public class MongoProperties {
 
 	public void setAutoIndexCreation(Boolean autoIndexCreation) {
 		this.autoIndexCreation = autoIndexCreation;
+	}
+
+	public static class Gridfs {
+
+		/**
+		 * GridFS database name.
+		 */
+		private String database;
+
+		/**
+		 * GridFS bucket name.
+		 */
+		private String bucket;
+
+		public String getDatabase() {
+			return this.database;
+		}
+
+		public void setDatabase(String database) {
+			this.database = database;
+		}
+
+		public String getBucket() {
+			return this.bucket;
+		}
+
+		public void setBucket(String bucket) {
+			this.bucket = bucket;
+		}
+
 	}
 
 }

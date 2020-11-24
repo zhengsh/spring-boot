@@ -33,6 +33,8 @@ import java.util.logging.Logger;
 import javax.sql.DataSource;
 
 import com.zaxxer.hikari.HikariDataSource;
+import io.r2dbc.spi.ConnectionFactory;
+import oracle.ucp.jdbc.PoolDataSourceImpl;
 import org.apache.commons.dbcp2.BasicDataSource;
 import org.junit.jupiter.api.Test;
 
@@ -48,6 +50,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.SimpleDriverDataSource;
+import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
 import org.springframework.util.StringUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -95,6 +98,12 @@ class DataSourceAutoConfigurationTests {
 	}
 
 	@Test
+	void datasourceWhenConnectionFactoryPresentIsNotAutoConfigured() {
+		this.contextRunner.withBean(ConnectionFactory.class, () -> mock(ConnectionFactory.class))
+				.run((context) -> assertThat(context).doesNotHaveBean(DataSource.class));
+	}
+
+	@Test
 	void hikariValidatesConnectionByDefault() {
 		assertDataSource(HikariDataSource.class, Collections.singletonList("org.apache.tomcat"), (dataSource) ->
 		// Use Connection#isValid()
@@ -127,8 +136,25 @@ class DataSourceAutoConfigurationTests {
 		assertDataSource(org.apache.commons.dbcp2.BasicDataSource.class,
 				Arrays.asList("com.zaxxer.hikari", "org.apache.tomcat"), (dataSource) -> {
 					assertThat(dataSource.getTestOnBorrow()).isTrue();
-					assertThat(dataSource.getValidationQuery()).isNull(); // Use
-																			// Connection#isValid()
+					// Use Connection#isValid()
+					assertThat(dataSource.getValidationQuery()).isNull();
+				});
+	}
+
+	@Test
+	void oracleUcpIsFallback() {
+		assertDataSource(PoolDataSourceImpl.class,
+				Arrays.asList("com.zaxxer.hikari", "org.apache.tomcat", "org.apache.commons.dbcp2"),
+				(dataSource) -> assertThat(dataSource.getURL()).startsWith("jdbc:hsqldb:mem:testdb"));
+	}
+
+	@Test
+	void oracleUcpValidatesConnectionByDefault() {
+		assertDataSource(PoolDataSourceImpl.class,
+				Arrays.asList("com.zaxxer.hikari", "org.apache.tomcat", "org.apache.commons.dbcp2"), (dataSource) -> {
+					assertThat(dataSource.getValidateConnectionOnBorrow()).isTrue();
+					// Use an internal ping when using an Oracle JDBC driver
+					assertThat(dataSource.getSQLForValidateConnection()).isNull();
 				});
 	}
 
@@ -147,6 +173,7 @@ class DataSourceAutoConfigurationTests {
 	@Test
 	void dataSourceWhenNoConnectionPoolsAreAvailableWithUrlDoesNotCreateDataSource() {
 		this.contextRunner.with(hideConnectionPools())
+				.withPropertyValues("spring.datasource.url:jdbc:hsqldb:mem:testdb")
 				.run((context) -> assertThat(context).doesNotHaveBean(DataSource.class));
 	}
 
@@ -195,6 +222,19 @@ class DataSourceAutoConfigurationTests {
 	}
 
 	@Test
+	void whenThereIsAUserProvidedDataSourceAnUnresolvablePlaceholderDoesNotCauseAProblem() {
+		this.contextRunner.withUserConfiguration(TestDataSourceConfiguration.class)
+				.withPropertyValues("spring.datasource.url:${UNRESOLVABLE_PLACEHOLDER}")
+				.run((context) -> assertThat(context).getBean(DataSource.class).isInstanceOf(BasicDataSource.class));
+	}
+
+	@Test
+	void whenThereIsAnEmptyUserProvidedDataSource() {
+		this.contextRunner.with(hideConnectionPools()).withPropertyValues("spring.datasource.url:")
+				.run((context) -> assertThat(context).getBean(DataSource.class).isInstanceOf(EmbeddedDatabase.class));
+	}
+
+	@Test
 	void testDataSourceIsInitializedEarly() {
 		this.contextRunner.withUserConfiguration(TestInitializedDataSourceConfiguration.class)
 				.withPropertyValues("spring.datasource.initialization-mode=always")
@@ -204,7 +244,7 @@ class DataSourceAutoConfigurationTests {
 
 	private static Function<ApplicationContextRunner, ApplicationContextRunner> hideConnectionPools() {
 		return (runner) -> runner.withClassLoader(new FilteredClassLoader("org.apache.tomcat", "com.zaxxer.hikari",
-				"org.apache.commons.dbcp", "org.apache.commons.dbcp2"));
+				"org.apache.commons.dbcp2", "oracle.ucp.jdbc"));
 	}
 
 	private <T extends DataSource> void assertDataSource(Class<T> expectedType, List<String> hiddenPackages,

@@ -27,6 +27,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.xnio.Option;
 import org.xnio.OptionMap;
+import org.xnio.Options;
 
 import org.springframework.boot.autoconfigure.web.ServerProperties;
 import org.springframework.boot.context.properties.bind.Bindable;
@@ -133,6 +134,22 @@ class UndertowWebServerFactoryCustomizerTests {
 	}
 
 	@Test
+	void customizeIoThreads() {
+		bind("server.undertow.threads.io=4");
+		ConfigurableUndertowWebServerFactory factory = mock(ConfigurableUndertowWebServerFactory.class);
+		this.customizer.customize(factory);
+		verify(factory).setIoThreads(4);
+	}
+
+	@Test
+	void customizeWorkerThreads() {
+		bind("server.undertow.threads.worker=10");
+		ConfigurableUndertowWebServerFactory factory = mock(ConfigurableUndertowWebServerFactory.class);
+		this.customizer.customize(factory);
+		verify(factory).setWorkerThreads(10);
+	}
+
+	@Test
 	void allowEncodedSlashes() {
 		bind("server.undertow.allow-encoded-slash=true");
 		assertThat(boundServerOption(UndertowOptions.ALLOW_ENCODED_SLASH)).isTrue();
@@ -170,13 +187,14 @@ class UndertowWebServerFactoryCustomizerTests {
 
 	@Test
 	void customSocketOption() {
-		bind("server.undertow.options.socket.ALWAYS_SET_KEEP_ALIVE=false");
-		assertThat(boundSocketOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE)).isFalse();
+		bind("server.undertow.options.socket.CONNECTION_LOW_WATER=8");
+		assertThat(boundSocketOption(Options.CONNECTION_LOW_WATER)).isEqualTo(8);
 	}
 
+	@Test
 	void customSocketOptionShouldBeRelaxed() {
-		bind("server.undertow.options.socket.always-set-keep-alive=false");
-		assertThat(boundSocketOption(UndertowOptions.ALWAYS_SET_KEEP_ALIVE)).isFalse();
+		bind("server.undertow.options.socket.connection-low-water=8");
+		assertThat(boundSocketOption(Options.CONNECTION_LOW_WATER)).isEqualTo(8);
 	}
 
 	@Test
@@ -192,14 +210,6 @@ class UndertowWebServerFactoryCustomizerTests {
 		ConfigurableUndertowWebServerFactory factory = mock(ConfigurableUndertowWebServerFactory.class);
 		this.customizer.customize(factory);
 		verify(factory).setUseForwardHeaders(false);
-	}
-
-	@Test
-	void setUseForwardHeaders() {
-		this.serverProperties.setUseForwardHeaders(true);
-		ConfigurableUndertowWebServerFactory factory = mock(ConfigurableUndertowWebServerFactory.class);
-		this.customizer.customize(factory);
-		verify(factory).setUseForwardHeaders(true);
 	}
 
 	@Test

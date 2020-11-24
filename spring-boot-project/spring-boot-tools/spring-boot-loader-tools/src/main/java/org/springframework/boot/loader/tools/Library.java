@@ -25,6 +25,7 @@ import java.io.InputStream;
  * Encapsulates information about a single library that may be packed into the archive.
  *
  * @author Phillip Webb
+ * @author Scott Frederick
  * @since 1.1.2
  * @see Libraries
  */
@@ -36,7 +37,11 @@ public class Library {
 
 	private final LibraryScope scope;
 
+	private final LibraryCoordinates coordinates;
+
 	private final boolean unpackRequired;
+
+	private final boolean local;
 
 	/**
 	 * Create a new {@link Library}.
@@ -66,10 +71,42 @@ public class Library {
 	 * @param unpackRequired if the library needs to be unpacked before it can be used
 	 */
 	public Library(String name, File file, LibraryScope scope, boolean unpackRequired) {
+		this(name, file, scope, null, unpackRequired);
+	}
+
+	/**
+	 * Create a new {@link Library}.
+	 * @param name the name of the library as it should be written or {@code null} to use
+	 * the file name
+	 * @param file the source file
+	 * @param scope the scope of the library
+	 * @param coordinates the library coordinates or {@code null}
+	 * @param unpackRequired if the library needs to be unpacked before it can be used
+	 */
+	public Library(String name, File file, LibraryScope scope, LibraryCoordinates coordinates, boolean unpackRequired) {
+		this(name, file, scope, coordinates, unpackRequired, false);
+	}
+
+	/**
+	 * Create a new {@link Library}.
+	 * @param name the name of the library as it should be written or {@code null} to use
+	 * the file name
+	 * @param file the source file
+	 * @param scope the scope of the library
+	 * @param coordinates the library coordinates or {@code null}
+	 * @param unpackRequired if the library needs to be unpacked before it can be used
+	 * @param local if the library is local (part of the same build) to the application
+	 * that is being packaged
+	 * @since 2.4.0
+	 */
+	public Library(String name, File file, LibraryScope scope, LibraryCoordinates coordinates, boolean unpackRequired,
+			boolean local) {
 		this.name = (name != null) ? name : file.getName();
 		this.file = file;
 		this.scope = scope;
+		this.coordinates = coordinates;
 		this.unpackRequired = unpackRequired;
+		this.local = local;
 	}
 
 	/**
@@ -106,6 +143,14 @@ public class Library {
 	}
 
 	/**
+	 * Return the {@linkplain LibraryCoordinates coordinates} of the library.
+	 * @return the coordinates
+	 */
+	public LibraryCoordinates getCoordinates() {
+		return this.coordinates;
+	}
+
+	/**
 	 * Return if the file cannot be used directly as a nested jar and needs to be
 	 * unpacked.
 	 * @return if unpack is required
@@ -116,6 +161,15 @@ public class Library {
 
 	long getLastModified() {
 		return this.file.lastModified();
+	}
+
+	/**
+	 * Return if the library is local (part of the same build) to the application that is
+	 * being packaged.
+	 * @return if the library is local
+	 */
+	public boolean isLocal() {
+		return this.local;
 	}
 
 }

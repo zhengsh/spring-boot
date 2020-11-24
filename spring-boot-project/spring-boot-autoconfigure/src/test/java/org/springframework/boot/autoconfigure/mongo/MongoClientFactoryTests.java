@@ -19,10 +19,8 @@ package org.springframework.boot.autoconfigure.mongo;
 import java.util.List;
 
 import com.mongodb.MongoClientSettings;
-import com.mongodb.ServerAddress;
 import com.mongodb.client.MongoClient;
 
-import org.springframework.core.env.Environment;
 import org.springframework.test.util.ReflectionTestUtils;
 
 /**
@@ -37,14 +35,9 @@ import org.springframework.test.util.ReflectionTestUtils;
 class MongoClientFactoryTests extends MongoClientFactorySupportTests<MongoClient> {
 
 	@Override
-	protected MongoClient createMongoClient(MongoProperties properties, Environment environment,
-			List<MongoClientSettingsBuilderCustomizer> customizers, MongoClientSettings settings) {
-		return new MongoClientFactory(properties, environment, customizers).createMongoClient(settings);
-	}
-
-	@Override
-	protected List<ServerAddress> getAllAddresses(MongoClient client) {
-		return client.getClusterDescription().getClusterSettings().getHosts();
+	protected MongoClient createMongoClient(List<MongoClientSettingsBuilderCustomizer> customizers,
+			MongoClientSettings settings) {
+		return new MongoClientFactory(customizers).createMongoClient(settings);
 	}
 
 	@Override

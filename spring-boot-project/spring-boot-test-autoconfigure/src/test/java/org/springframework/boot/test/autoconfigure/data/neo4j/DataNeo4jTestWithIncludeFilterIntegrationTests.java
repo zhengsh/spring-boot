@@ -24,12 +24,11 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.util.TestPropertyValues;
-import org.springframework.context.ApplicationContextInitializer;
-import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.boot.testsupport.testcontainers.DockerImageNames;
 import org.springframework.context.annotation.ComponentScan.Filter;
 import org.springframework.stereotype.Service;
-import org.springframework.test.context.ContextConfiguration;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -40,13 +39,17 @@ import static org.assertj.core.api.Assertions.assertThat;
  * @author Michael Simons
  */
 @Testcontainers(disabledWithoutDocker = true)
-@ContextConfiguration(initializers = DataNeo4jTestWithIncludeFilterIntegrationTests.Initializer.class)
 @DataNeo4jTest(includeFilters = @Filter(Service.class))
 class DataNeo4jTestWithIncludeFilterIntegrationTests {
 
 	@Container
-	static final Neo4jContainer<?> neo4j = new Neo4jContainer<>().withoutAuthentication()
+	static final Neo4jContainer<?> neo4j = new Neo4jContainer<>(DockerImageNames.neo4j()).withoutAuthentication()
 			.withStartupTimeout(Duration.ofMinutes(10));
+
+	@DynamicPropertySource
+	static void neo4jProperties(DynamicPropertyRegistry registry) {
+		registry.add("spring.neo4j.uri", neo4j::getBoltUrl);
+	}
 
 	@Autowired
 	private ExampleService service;
@@ -54,16 +57,6 @@ class DataNeo4jTestWithIncludeFilterIntegrationTests {
 	@Test
 	void testService() {
 		assertThat(this.service.hasNode(ExampleGraph.class)).isFalse();
-	}
-
-	static class Initializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
-
-		@Override
-		public void initialize(ConfigurableApplicationContext configurableApplicationContext) {
-			TestPropertyValues.of("spring.data.neo4j.uri=" + neo4j.getBoltUrl())
-					.applyTo(configurableApplicationContext.getEnvironment());
-		}
-
 	}
 
 }

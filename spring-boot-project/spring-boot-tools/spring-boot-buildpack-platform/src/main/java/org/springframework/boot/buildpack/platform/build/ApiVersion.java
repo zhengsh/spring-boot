@@ -29,8 +29,6 @@ import org.springframework.util.Assert;
  */
 final class ApiVersion {
 
-	private static final ApiVersion PLATFORM_0_1 = new ApiVersion(0, 1);
-
 	private static final Pattern PATTERN = Pattern.compile("^v?(\\d+)\\.(\\d*)$");
 
 	private final int major;
@@ -88,25 +86,6 @@ final class ApiVersion {
 		return this.minor >= other.minor;
 	}
 
-	/**
-	 * Returns a value indicating whether the API version has a separate cache phase, or
-	 * caching is distributed across other stages.
-	 * @return {@code true} if the API has a separate cache phase, {@code false} otherwise
-	 */
-	boolean hasCachePhase() {
-		return supports(PLATFORM_0_1);
-	}
-
-	/**
-	 * Returns a value indicating whether the API version requires that the analyze phase
-	 * must follow the restore phase, or if the reverse order is required.
-	 * @return {@code true} if the analyze phase follows restore, {@code false} if restore
-	 * follows analyze
-	 */
-	boolean analyzeFollowsRestore() {
-		return supports(PLATFORM_0_1);
-	}
-
 	@Override
 	public boolean equals(Object obj) {
 		if (this == obj) {
@@ -126,7 +105,7 @@ final class ApiVersion {
 
 	@Override
 	public String toString() {
-		return "v" + this.major + "." + this.minor;
+		return this.major + "." + this.minor;
 	}
 
 	/**

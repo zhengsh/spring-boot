@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
+import java.util.stream.Collectors;
 
 import org.apache.commons.compress.archivers.jar.JarArchiveEntry;
 
@@ -78,7 +79,9 @@ public abstract class Packager {
 
 	private LayoutFactory layoutFactory;
 
-	private Layers layers = Layers.IMPLICIT;
+	private Layers layers;
+
+	private LayersIndex layersIndex;
 
 	private boolean includeRelevantJarModeJars = true;
 
@@ -90,7 +93,7 @@ public abstract class Packager {
 	protected Packager(File source, LayoutFactory layoutFactory) {
 		Assert.notNull(source, "Source file must not be null");
 		Assert.isTrue(source.exists() && source.isFile(),
-				"Source must refer to an existing file, got " + source.getAbsolutePath());
+				() -> "Source must refer to an existing file, got " + source.getAbsolutePath());
 		this.source = source.getAbsoluteFile();
 		this.layoutFactory = layoutFactory;
 	}
@@ -135,11 +138,11 @@ public abstract class Packager {
 	/**
 	 * Sets the layers that should be used in the jar.
 	 * @param layers the jar layers
-	 * @see LayeredLayout
 	 */
 	public void setLayers(Layers layers) {
 		Assert.notNull(layers, "Layers must not be null");
 		this.layers = layers;
+		this.layersIndex = new LayersIndex(layers);
 	}
 
 	/**
@@ -164,12 +167,16 @@ public abstract class Packager {
 	protected final void write(JarFile sourceJar, Libraries libraries, AbstractJarWriter writer) throws IOException {
 		Assert.notNull(libraries, "Libraries must not be null");
 		WritableLibraries writeableLibraries = new WritableLibraries(libraries);
+		if (isLayered()) {
+			writer.useLayers(this.layers, this.layersIndex);
+		}
 		writer.writeManifest(buildManifest(sourceJar));
 		writeLoaderClasses(writer);
 		writer.writeEntries(sourceJar, getEntityTransformer(), writeableLibraries);
 		writeableLibraries.write(writer);
-
-		writeLayerIndex(writer);
+		if (isLayered()) {
+			writeLayerIndex(writer);
+		}
 	}
 
 	private void writeLoaderClasses(AbstractJarWriter writer) throws IOException {
@@ -183,19 +190,17 @@ public abstract class Packager {
 	}
 
 	private void writeLayerIndex(AbstractJarWriter writer) throws IOException {
-		if (this.layers != null && getLayout() instanceof LayeredLayout) {
-			String location = ((LayeredLayout) this.layout).getLayersIndexFileLocation();
-			if (StringUtils.hasLength(location)) {
-				List<String> layerNames = new ArrayList<>();
-				this.layers.forEach((layer) -> layerNames.add(layer.toString()));
-				writer.writeIndexFile(location, layerNames);
-			}
+		String name = ((RepackagingLayout) this.layout).getLayersIndexFileLocation();
+		if (StringUtils.hasLength(name)) {
+			Layer layer = this.layers.getLayer(name);
+			this.layersIndex.add(layer, name);
+			writer.writeEntry(name, this.layersIndex::writeTo);
 		}
 	}
 
 	private EntryTransformer getEntityTransformer() {
 		if (getLayout() instanceof RepackagingLayout) {
-			return new RepackagingEntryTransformer((RepackagingLayout) getLayout(), this.layers);
+			return new RepackagingEntryTransformer((RepackagingLayout) getLayout());
 		}
 		return EntryTransformer.NONE;
 	}
@@ -314,29 +319,24 @@ public abstract class Packager {
 	private void addBootAttributes(Attributes attributes) {
 		attributes.putValue(BOOT_VERSION_ATTRIBUTE, getClass().getPackage().getImplementationVersion());
 		Layout layout = getLayout();
-		if (layout instanceof LayeredLayout) {
-			addBootBootAttributesForLayeredLayout(attributes, (LayeredLayout) layout);
-		}
-		else if (layout instanceof RepackagingLayout) {
+		if (layout instanceof RepackagingLayout) {
 			addBootBootAttributesForRepackagingLayout(attributes, (RepackagingLayout) layout);
 		}
 		else {
-			addBootBootAttributesForPlainLayout(attributes, layout);
+			addBootBootAttributesForPlainLayout(attributes);
 		}
-	}
-
-	private void addBootBootAttributesForLayeredLayout(Attributes attributes, LayeredLayout layout) {
-		putIfHasLength(attributes, BOOT_LAYERS_INDEX_ATTRIBUTE, layout.getLayersIndexFileLocation());
-		putIfHasLength(attributes, BOOT_CLASSPATH_INDEX_ATTRIBUTE, layout.getClasspathIndexFileLocation());
 	}
 
 	private void addBootBootAttributesForRepackagingLayout(Attributes attributes, RepackagingLayout layout) {
 		attributes.putValue(BOOT_CLASSES_ATTRIBUTE, layout.getRepackagedClassesLocation());
 		putIfHasLength(attributes, BOOT_LIB_ATTRIBUTE, getLayout().getLibraryLocation("", LibraryScope.COMPILE));
 		putIfHasLength(attributes, BOOT_CLASSPATH_INDEX_ATTRIBUTE, layout.getClasspathIndexFileLocation());
+		if (isLayered()) {
+			putIfHasLength(attributes, BOOT_LAYERS_INDEX_ATTRIBUTE, layout.getLayersIndexFileLocation());
+		}
 	}
 
-	private void addBootBootAttributesForPlainLayout(Attributes attributes, Layout layout) {
+	private void addBootBootAttributesForPlainLayout(Attributes attributes) {
 		attributes.putValue(BOOT_CLASSES_ATTRIBUTE, getLayout().getClassesLocation());
 		putIfHasLength(attributes, BOOT_LIB_ATTRIBUTE, getLayout().getLibraryLocation("", LibraryScope.COMPILE));
 	}
@@ -345,6 +345,10 @@ public abstract class Packager {
 		if (StringUtils.hasLength(value)) {
 			attributes.putValue(name, value);
 		}
+	}
+
+	private boolean isLayered() {
+		return this.layers != null && getLayout() instanceof Layouts.Jar;
 	}
 
 	/**
@@ -370,11 +374,8 @@ public abstract class Packager {
 
 		private final RepackagingLayout layout;
 
-		private final Layers layers;
-
-		private RepackagingEntryTransformer(RepackagingLayout layout, Layers layers) {
+		private RepackagingEntryTransformer(RepackagingLayout layout) {
 			this.layout = layout;
-			this.layers = layers;
 		}
 
 		@Override
@@ -411,11 +412,6 @@ public abstract class Packager {
 		}
 
 		private String transformName(String name) {
-			if (this.layout instanceof LayeredLayout) {
-				Layer layer = this.layers.getLayer(name);
-				Assert.state(layer != null, () -> "Invalid 'null' layer from " + this.layers.getClass().getName());
-				return ((LayeredLayout) this.layout).getRepackagedClassesLocation(layer) + name;
-			}
 			return this.layout.getRepackagedClassesLocation() + name;
 		}
 
@@ -443,31 +439,18 @@ public abstract class Packager {
 					addLibrary(library);
 				}
 			});
-			if (Packager.this.includeRelevantJarModeJars) {
-				if (getLayout() instanceof LayeredLayout) {
-					addLibrary(JarModeLibrary.LAYER_TOOLS);
-				}
+			if (isLayered() && Packager.this.includeRelevantJarModeJars) {
+				addLibrary(JarModeLibrary.LAYER_TOOLS);
 			}
 		}
 
 		private void addLibrary(Library library) {
-			String location = getLocation(library);
+			String location = getLayout().getLibraryLocation(library.getName(), library.getScope());
 			if (location != null) {
 				String path = location + library.getName();
 				Library existing = this.libraries.putIfAbsent(path, library);
 				Assert.state(existing == null, () -> "Duplicate library " + library.getName());
 			}
-		}
-
-		private String getLocation(Library library) {
-			Layout layout = getLayout();
-			if (layout instanceof LayeredLayout) {
-				Layers layers = Packager.this.layers;
-				Layer layer = layers.getLayer(library);
-				Assert.state(layer != null, () -> "Invalid 'null' library layer from " + layers.getClass().getName());
-				return ((LayeredLayout) layout).getLibraryLocation(library.getName(), library.getScope(), layer);
-			}
-			return layout.getLibraryLocation(library.getName(), library.getScope());
 		}
 
 		@Override
@@ -491,9 +474,18 @@ public abstract class Packager {
 				writer.writeNestedLibrary(location, library);
 			}
 			if (getLayout() instanceof RepackagingLayout) {
-				String location = ((RepackagingLayout) getLayout()).getClasspathIndexFileLocation();
-				writer.writeIndexFile(location, this.libraries.keySet());
+				writeClasspathIndex((RepackagingLayout) getLayout(), writer);
 			}
+		}
+
+		private void writeClasspathIndex(RepackagingLayout layout, AbstractJarWriter writer) throws IOException {
+			List<String> names = this.libraries.keySet().stream().map(this::getJarName)
+					.map((name) -> "- \"" + name + "\"").collect(Collectors.toList());
+			writer.writeIndexFile(layout.getClasspathIndexFileLocation(), names);
+		}
+
+		private String getJarName(String path) {
+			return path.substring(path.lastIndexOf('/') + 1);
 		}
 
 	}

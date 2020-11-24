@@ -15,6 +15,7 @@
  */
 package org.springframework.boot.actuate.cassandra;
 
+import com.datastax.oss.driver.api.core.ConsistencyLevel;
 import com.datastax.oss.driver.api.core.cql.SimpleStatement;
 import reactor.core.publisher.Mono;
 
@@ -29,8 +30,13 @@ import org.springframework.util.Assert;
  *
  * @author Artsiom Yudovin
  * @since 2.1.0
+ * @deprecated since 2.4.0 in favor of {@link CassandraDriverHealthIndicator}
  */
+@Deprecated
 public class CassandraReactiveHealthIndicator extends AbstractReactiveHealthIndicator {
+
+	private static final SimpleStatement SELECT = SimpleStatement
+			.newInstance("SELECT release_version FROM system.local").setConsistencyLevel(ConsistencyLevel.LOCAL_ONE);
 
 	private final ReactiveCassandraOperations reactiveCassandraOperations;
 
@@ -46,8 +52,7 @@ public class CassandraReactiveHealthIndicator extends AbstractReactiveHealthIndi
 
 	@Override
 	protected Mono<Health> doHealthCheck(Health.Builder builder) {
-		SimpleStatement select = SimpleStatement.newInstance("SELECT release_version FROM system.local");
-		return this.reactiveCassandraOperations.getReactiveCqlOperations().queryForObject(select, String.class)
+		return this.reactiveCassandraOperations.getReactiveCqlOperations().queryForObject(SELECT, String.class)
 				.map((version) -> builder.up().withDetail("version", version).build()).single();
 	}
 

@@ -39,6 +39,7 @@ import static org.mockito.Mockito.mock;
  * Tests for {@link LayerToolsJarMode}.
  *
  * @author Phillip Webb
+ * @author Scott Frederick
  */
 class LayerToolsJarModeTests {
 
@@ -68,7 +69,7 @@ class LayerToolsJarModeTests {
 	}
 
 	@Test
-	void mainWithNoParamersShowsHelp() {
+	void mainWithNoParametersShowsHelp() {
 		new LayerToolsJarMode().run("layertools", NO_ARGS);
 		assertThat(this.out).hasSameContentAsResource("help-output.txt");
 	}
@@ -79,16 +80,37 @@ class LayerToolsJarModeTests {
 		assertThat(this.out).hasSameContentAsResource("list-output.txt");
 	}
 
+	@Test
+	void mainWithUnknownCommandShowsErrorAndHelp() {
+		new LayerToolsJarMode().run("layertools", new String[] { "invalid" });
+		assertThat(this.out).hasSameContentAsResource("error-command-unknown-output.txt");
+	}
+
+	@Test
+	void mainWithUnknownOptionShowsErrorAndCommandHelp() {
+		new LayerToolsJarMode().run("layertools", new String[] { "extract", "--invalid" });
+		assertThat(this.out).hasSameContentAsResource("error-option-unknown-output.txt");
+	}
+
+	@Test
+	void mainWithOptionMissingRequiredValueShowsErrorAndCommandHelp() {
+		new LayerToolsJarMode().run("layertools", new String[] { "extract", "--destination" });
+		assertThat(this.out).hasSameContentAsResource("error-option-missing-value-output.txt");
+	}
+
 	private File createJarFile(String name) throws IOException {
 		File file = new File(this.temp, name);
 		try (ZipOutputStream jarOutputStream = new ZipOutputStream(new FileOutputStream(file))) {
 			JarEntry indexEntry = new JarEntry("BOOT-INF/layers.idx");
 			jarOutputStream.putNextEntry(indexEntry);
 			Writer writer = new OutputStreamWriter(jarOutputStream, StandardCharsets.UTF_8);
-			writer.write("a\n");
-			writer.write("b\n");
-			writer.write("c\n");
-			writer.write("d\n");
+			writer.write("- \"0001\":\n");
+			writer.write("  - \"BOOT-INF/lib/a.jar\"\n");
+			writer.write("  - \"BOOT-INF/lib/b.jar\"\n");
+			writer.write("- \"0002\":\n");
+			writer.write("  - \"0002 BOOT-INF/lib/c.jar\"\n");
+			writer.write("- \"0003\":\n");
+			writer.write("  - \"BOOT-INF/lib/d.jar\"\n");
 			writer.flush();
 		}
 		return file;

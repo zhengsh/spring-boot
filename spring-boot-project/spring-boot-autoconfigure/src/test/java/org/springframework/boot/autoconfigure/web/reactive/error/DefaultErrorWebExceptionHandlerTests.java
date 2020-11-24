@@ -1,5 +1,5 @@
 /*
- * Copyright 2012-2019 the original author or authors.
+ * Copyright 2012-2020 the original author or authors.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import org.junit.jupiter.api.Test;
 import reactor.core.publisher.Mono;
 
 import org.springframework.boot.autoconfigure.web.ErrorProperties;
-import org.springframework.boot.autoconfigure.web.ResourceProperties;
+import org.springframework.boot.autoconfigure.web.WebProperties.Resources;
 import org.springframework.boot.web.reactive.context.AnnotationConfigReactiveWebApplicationContext;
 import org.springframework.boot.web.reactive.error.ErrorAttributes;
 import org.springframework.context.ApplicationContext;
@@ -38,7 +38,6 @@ import org.springframework.web.server.adapter.HttpWebHandlerAdapter;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
 
@@ -47,6 +46,7 @@ import static org.mockito.Mockito.mock;
  *
  * @author Phillip Webb
  * @author Madhura Bhave
+ * @author Scott Frederick
  */
 class DefaultErrorWebExceptionHandlerTests {
 
@@ -62,10 +62,10 @@ class DefaultErrorWebExceptionHandlerTests {
 	@Test
 	void nonStandardErrorStatusCodeShouldNotFail() {
 		ErrorAttributes errorAttributes = mock(ErrorAttributes.class);
-		ResourceProperties resourceProperties = new ResourceProperties();
+		Resources resourceProperties = new Resources();
 		ErrorProperties errorProperties = new ErrorProperties();
 		ApplicationContext context = new AnnotationConfigReactiveWebApplicationContext();
-		given(errorAttributes.getErrorAttributes(any(), anyBoolean())).willReturn(getErrorAttributes());
+		given(errorAttributes.getErrorAttributes(any(), any())).willReturn(getErrorAttributes());
 		DefaultErrorWebExceptionHandler exceptionHandler = new DefaultErrorWebExceptionHandler(errorAttributes,
 				resourceProperties, errorProperties, context);
 		setupViewResolver(exceptionHandler);
