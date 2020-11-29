@@ -190,6 +190,7 @@ public class ConfigFileApplicationListener implements EnvironmentPostProcessor, 
 	}
 
 	List<EnvironmentPostProcessor> loadPostProcessors() {
+		//加载后置处理器
 		return SpringFactoriesLoader.loadFactories(EnvironmentPostProcessor.class, getClass().getClassLoader());
 	}
 

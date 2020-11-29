@@ -311,6 +311,7 @@ public class SpringApplication {
 		configureHeadlessProperty();
 		//从META-INF/spring.factories中获取监听器  SpringApplicationRunListeners
 		SpringApplicationRunListeners listeners = getRunListeners(args);
+		//遍历回调SpringApplicationRunListeners的starting方法
 		listeners.starting();
 		try {
 			//封装命令行参数
@@ -344,6 +345,7 @@ public class SpringApplication {
 			callRunners(context, applicationArguments);
 		}
 		catch (Throwable ex) {
+			//启动异常报告
 			handleRunFailure(context, ex, exceptionReporters, listeners);
 			throw new IllegalStateException(ex);
 		}
@@ -366,7 +368,7 @@ public class SpringApplication {
 		//根据用户配置，配置 environment系统环境
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
 		ConfigurationPropertySources.attach(environment);
-		//发布监听事件， ConfigFileApplicationListener 就是加载项目配置文件的监听器。
+		//发布监听事件 ApplicationEnvironmentPreparedEvent ， ConfigFileApplicationListener 就是加载项目配置文件的监听器。
 		listeners.environmentPrepared(environment);
 		bindToSpringApplication(environment);
 		if (!this.isCustomEnvironment) {
