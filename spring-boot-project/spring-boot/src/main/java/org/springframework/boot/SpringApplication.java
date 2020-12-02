@@ -269,13 +269,13 @@ public class SpringApplication {
 		this.resourceLoader = resourceLoader;
 		Assert.notNull(primarySources, "PrimarySources must not be null");
 		this.primarySources = new LinkedHashSet<>(Arrays.asList(primarySources));
-		//推断应用类型,reactive,servlet
+		// 推断应用类型,reactive,servlet
 		this.webApplicationType = WebApplicationType.deduceFromClasspath();
-		//初始化classpath下 META-INF/spring.factories中配置的ApplicationContextInitializer
+		// 初始化classpath下 META-INF/spring.factories中配置的ApplicationContextInitializer
 		setInitializers((Collection) getSpringFactoriesInstances(ApplicationContextInitializer.class));
-		//初始化classpath下所有配置的 ApplicationListener(META-INF/spring.factories)
+		// 初始化classpath下所有配置的 ApplicationListener(META-INF/spring.factories)
 		setListeners((Collection) getSpringFactoriesInstances(ApplicationListener.class));
-		//根据调用栈，推断出 main 方法的类名
+		// 根据调用栈，推断出 main 方法的类名
 		this.mainApplicationClass = deduceMainApplicationClass();
 	}
 
@@ -306,46 +306,46 @@ public class SpringApplication {
 		stopWatch.start();
 		ConfigurableApplicationContext context = null;
 		Collection<SpringBootExceptionReporter> exceptionReporters = new ArrayList<>();
-		//java.awt.headless是J2SE的一种模式用于在缺少显示屏、键盘或者鼠标时的系统配置，
-		//很多监控工具如 jconsole 需要将该值设置为 true，系统变量默认为true
+		// java.awt.headless是J2SE的一种模式用于在缺少显示屏、键盘或者鼠标时的系统配置，
+		// 很多监控工具如 jconsole 需要将该值设置为 true，系统变量默认为true
 		configureHeadlessProperty();
-		//从META-INF/spring.factories中获取监听器  SpringApplicationRunListeners
+		// 从META-INF/spring.factories中获取监听器 SpringApplicationRunListeners
 		SpringApplicationRunListeners listeners = getRunListeners(args);
-		//遍历回调SpringApplicationRunListeners的starting方法
+		// 遍历回调SpringApplicationRunListeners的starting方法
 		listeners.starting();
 		try {
-			//封装命令行参数
+			// 封装命令行参数
 			ApplicationArguments applicationArguments = new DefaultApplicationArguments(args);
-			//构造应用上下文环境，完成后回调SpringApplicationRunListeners的environmentPrepared方法
+			// 构造应用上下文环境，完成后回调SpringApplicationRunListeners的environmentPrepared方法
 			ConfigurableEnvironment environment = prepareEnvironment(listeners, applicationArguments);
-			//处理需要忽略的Bean
+			// 处理需要忽略的Bean
 			configureIgnoreBeanInfo(environment);
-			//打印banner
+			// 打印banner
 			Banner printedBanner = printBanner(environment);
-			//根据是否web环境创建相应的IOC容器
+			// 根据是否web环境创建相应的IOC容器
 			context = createApplicationContext();
 			exceptionReporters = getSpringFactoriesInstances(SpringBootExceptionReporter.class,
 					new Class[] { ConfigurableApplicationContext.class }, context);
-			//准备上下文环境，将environment保持到IOC容器中
-			//执行applyInitializers，遍历回调ApplicationContextInitializer的initialize方法
-			//遍历回调SpringApplicationRunListeners的contextPrepared方法
-			//遍历回调SpringApplicationRunListeners的contextLoaded方法
+			// 准备上下文环境，将environment保持到IOC容器中
+			// 执行applyInitializers，遍历回调ApplicationContextInitializer的initialize方法
+			// 遍历回调SpringApplicationRunListeners的contextPrepared方法
+			// 遍历回调SpringApplicationRunListeners的contextLoaded方法
 			prepareContext(context, environment, listeners, applicationArguments, printedBanner);
-			//刷新应用上下文,组件扫描、创建、加载
+			// 刷新应用上下文,组件扫描、创建、加载
 			refreshContext(context);
-			//从IOC容器获取所有的ApplicationRunner（先调用）和CommandLinedRunner进行回调
+			// 从IOC容器获取所有的ApplicationRunner（先调用）和CommandLinedRunner进行回调
 			afterRefresh(context, applicationArguments);
-			//时间记录停止
+			// 时间记录停止
 			stopWatch.stop();
 			if (this.logStartupInfo) {
 				new StartupInfoLogger(this.mainApplicationClass).logStarted(getApplicationLog(), stopWatch);
 			}
-			//发布容器启动完成事件
+			// 发布容器启动完成事件
 			listeners.started(context);
 			callRunners(context, applicationArguments);
 		}
 		catch (Throwable ex) {
-			//启动异常报告
+			// 启动异常报告
 			handleRunFailure(context, ex, exceptionReporters, listeners);
 			throw new IllegalStateException(ex);
 		}
@@ -363,12 +363,13 @@ public class SpringApplication {
 	private ConfigurableEnvironment prepareEnvironment(SpringApplicationRunListeners listeners,
 			ApplicationArguments applicationArguments) {
 		// Create and configure the environment
-		//创建并配置相应的环境,获取对应的ConfigurableEnvironment
+		// 创建并配置相应的环境,获取对应的ConfigurableEnvironment
 		ConfigurableEnvironment environment = getOrCreateEnvironment();
-		//根据用户配置，配置 environment系统环境
+		// 根据用户配置，配置 environment系统环境
 		configureEnvironment(environment, applicationArguments.getSourceArgs());
 		ConfigurationPropertySources.attach(environment);
-		//发布监听事件 ApplicationEnvironmentPreparedEvent ， ConfigFileApplicationListener 就是加载项目配置文件的监听器。
+		// 发布监听事件 ApplicationEnvironmentPreparedEvent ， ConfigFileApplicationListener
+		// 就是加载项目配置文件的监听器。
 		listeners.environmentPrepared(environment);
 		bindToSpringApplication(environment);
 		if (!this.isCustomEnvironment) {
@@ -390,16 +391,16 @@ public class SpringApplication {
 		}
 	}
 
-	//刷新容器前的准备工作
+	// 刷新容器前的准备工作
 	private void prepareContext(ConfigurableApplicationContext context, ConfigurableEnvironment environment,
 			SpringApplicationRunListeners listeners, ApplicationArguments applicationArguments, Banner printedBanner) {
-		//设置容器环境
+		// 设置容器环境
 		context.setEnvironment(environment);
-		//执行容器后置处理
+		// 执行容器后置处理
 		postProcessApplicationContext(context);
-		//执行容器中的 ApplicationContextInitializer 包括spring.factories和通过三种方式自定义的
+		// 执行容器中的 ApplicationContextInitializer 包括spring.factories和通过三种方式自定义的
 		applyInitializers(context);
-		//向各个监听器发送容器已经准备好的事件
+		// 向各个监听器发送容器已经准备好的事件
 		listeners.contextPrepared(context);
 		if (this.logStartupInfo) {
 			logStartupInfo(context.getParent() == null);
@@ -407,10 +408,10 @@ public class SpringApplication {
 		}
 		// Add boot specific singleton beans
 		ConfigurableListableBeanFactory beanFactory = context.getBeanFactory();
-		//将main函数中的args参数封装成单例Bean，注册进容器
+		// 将main函数中的args参数封装成单例Bean，注册进容器
 		beanFactory.registerSingleton("springApplicationArguments", applicationArguments);
 		if (printedBanner != null) {
-			//将 printedBanner 封装成单例，注册进容器
+			// 将 printedBanner 封装成单例，注册进容器
 			beanFactory.registerSingleton("springBootBanner", printedBanner);
 		}
 		if (beanFactory instanceof DefaultListableBeanFactory) {
@@ -423,9 +424,9 @@ public class SpringApplication {
 		// Load the sources
 		Set<Object> sources = getAllSources();
 		Assert.notEmpty(sources, "Sources must not be empty");
-		//加载启动类，将启动类注入容器
+		// 加载启动类，将启动类注入容器
 		load(context, sources.toArray(new Object[0]));
-		//发布容器已加载事件
+		// 发布容器已加载事件
 		listeners.contextLoaded(context);
 	}
 
@@ -456,31 +457,31 @@ public class SpringApplication {
 		return getSpringFactoriesInstances(type, new Class<?>[] {});
 	}
 
-	//通过getClassLoader 从META-INF/spring.factories获取指定的Spring的工厂实例
+	// 通过getClassLoader 从META-INF/spring.factories获取指定的Spring的工厂实例
 	private <T> Collection<T> getSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes, Object... args) {
-		//默认为Thread.currentThread().getContextClassLoader()/ClassLoader.getSystemClassLoader()
+		// 默认为Thread.currentThread().getContextClassLoader()/ClassLoader.getSystemClassLoader()
 		ClassLoader classLoader = getClassLoader();
 		// Use names and ensure unique to protect against duplicates
-		//读取 key 为 type.getName() 的 value
+		// 读取 key 为 type.getName() 的 value
 		Set<String> names = new LinkedHashSet<>(SpringFactoriesLoader.loadFactoryNames(type, classLoader));
-		//反射创建Bean
+		// 反射创建Bean
 		List<T> instances = createSpringFactoriesInstances(type, parameterTypes, classLoader, args, names);
 		AnnotationAwareOrderComparator.sort(instances);
 		return instances;
 	}
 
-	//spring-boot 框架中获取factories的统一方式
+	// spring-boot 框架中获取factories的统一方式
 	@SuppressWarnings("unchecked")
 	private <T> List<T> createSpringFactoriesInstances(Class<T> type, Class<?>[] parameterTypes,
 			ClassLoader classLoader, Object[] args, Set<String> names) {
 		List<T> instances = new ArrayList<>(names.size());
 		for (String name : names) {
 			try {
-				//装载class文件到内存
+				// 装载class文件到内存
 				Class<?> instanceClass = ClassUtils.forName(name, classLoader);
 				Assert.isAssignable(type, instanceClass);
 				Constructor<?> constructor = instanceClass.getDeclaredConstructor(parameterTypes);
-				//通过反射创建实例
+				// 通过反射创建实例
 				T instance = (T) BeanUtils.instantiateClass(constructor, args);
 				instances.add(instance);
 			}
@@ -491,18 +492,19 @@ public class SpringApplication {
 		return instances;
 	}
 
-	//根据环境创建对应ConfigurableEnvironment
+	// 根据环境创建对应ConfigurableEnvironment
 	private ConfigurableEnvironment getOrCreateEnvironment() {
 		if (this.environment != null) {
 			return this.environment;
 		}
 		switch (this.webApplicationType) {
 		case SERVLET:
-			return new StandardServletEnvironment(); //Web程序
+			return new StandardServletEnvironment(); // Web程序
 		case REACTIVE:
-			return new StandardReactiveWebEnvironment(); //响应式web环境
+			return new StandardReactiveWebEnvironment(); // 响应式web环境
 		default:
-			return new StandardEnvironment();//普通程序
+			// 普通程序
+			return new StandardEnvironment();
 		}
 	}
 
@@ -641,7 +643,7 @@ public class SpringApplication {
 	 */
 	// 舒心容器前的准备工作，Bean 生成器和资源加载器
 	protected void postProcessApplicationContext(ConfigurableApplicationContext context) {
-		//如果设置了是实例命名生成器，注册到Spring容器中
+		// 如果设置了是实例命名生成器，注册到Spring容器中
 		if (this.beanNameGenerator != null) {
 			context.getBeanFactory().registerSingleton(AnnotationConfigUtils.CONFIGURATION_BEAN_NAME_GENERATOR,
 					this.beanNameGenerator);
@@ -727,7 +729,7 @@ public class SpringApplication {
 		if (logger.isDebugEnabled()) {
 			logger.debug("Loading source " + StringUtils.arrayToCommaDelimitedString(sources));
 		}
-		//创建 BeanDefinitionLoader 将上下文context强转为BeanDefinitionRegistry
+		// 创建 BeanDefinitionLoader 将上下文context强转为BeanDefinitionRegistry
 		BeanDefinitionLoader loader = createBeanDefinitionLoader(getBeanDefinitionRegistry(context), sources);
 		if (this.beanNameGenerator != null) {
 			loader.setBeanNameGenerator(this.beanNameGenerator);
@@ -860,12 +862,12 @@ public class SpringApplication {
 		ReflectionUtils.rethrowRuntimeException(exception);
 	}
 
-	//报告错误信息
+	// 报告错误信息
 	private void reportFailure(Collection<SpringBootExceptionReporter> exceptionReporters, Throwable failure) {
 		try {
 			for (SpringBootExceptionReporter reporter : exceptionReporters) {
 				if (reporter.reportException(failure)) {
-					//上报错误log
+					// 上报错误log
 					registerLoggedException(failure);
 					return;
 				}

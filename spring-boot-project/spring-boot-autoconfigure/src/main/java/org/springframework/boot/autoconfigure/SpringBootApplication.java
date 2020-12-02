@@ -45,26 +45,29 @@ import org.springframework.data.repository.Repository;
  * @author Andy Wilkinson
  * @since 1.2.0
  */
-//修饰自定义注解，指定该自定义注解的注解位置，类还是方法，或者属性
+// 修饰自定义注解，指定该自定义注解的注解位置，类还是方法，或者属性
 @Target(ElementType.TYPE)
-//被它所注解的注解保留多久，注解的生命周期。可选的参数值在枚举类型 RetentionPolicy 中,一般如果需要在运行时去动态获取注解信息，那只能用 RUNTIME 注解；如果要在编译时进行一些预处理操作，比如生成一些辅助代码（如 ButterKnife），就用 CLASS注解；如果只是做一些检查性的操作，比如 @Override 和 @SuppressWarnings，则可选用 SOURCE 注解。
+// 被它所注解的注解保留多久，注解的生命周期。可选的参数值在枚举类型 RetentionPolicy 中,一般如果需要在运行时去动态获取注解信息，那只能用 RUNTIME
+// 注解；如果要在编译时进行一些预处理操作，比如生成一些辅助代码（如 ButterKnife），就用 CLASS注解；如果只是做一些检查性的操作，比如 @Override 和
+// @SuppressWarnings，则可选用 SOURCE 注解。
 @Retention(RetentionPolicy.RUNTIME)
-//将此注解包含在 javadoc 中 ，它代表着此注解会被javadoc工具提取成文档。在doc文档中的内容会因为此注解的信息内容不同而不同。相当与@see（后面可以跟类路径等参数实现链接跳转  Ctrl跳转）,@param（注释参数） 等。
+// 将此注解包含在 javadoc 中
+// ，它代表着此注解会被javadoc工具提取成文档。在doc文档中的内容会因为此注解的信息内容不同而不同。相当与@see（后面可以跟类路径等参数实现链接跳转
+// Ctrl跳转）,@param（注释参数） 等。
 @Documented
-//修饰自定义注解，该自定义注解注解的类，被继承时，子类也会拥有该自定义注解
+// 修饰自定义注解，该自定义注解注解的类，被继承时，子类也会拥有该自定义注解
 @Inherited
-//等价 @Configuration
+// 等价 @Configuration
 @SpringBootConfiguration
-//@AutoConfigurationPackage
-//@Import(AutoConfigurationImportSelector.class)
+// @AutoConfigurationPackage
+// @Import(AutoConfigurationImportSelector.class)
 @EnableAutoConfiguration
-@ComponentScan(excludeFilters = {@Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
-		@Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class)})
+@ComponentScan(excludeFilters = { @Filter(type = FilterType.CUSTOM, classes = TypeExcludeFilter.class),
+		@Filter(type = FilterType.CUSTOM, classes = AutoConfigurationExcludeFilter.class) })
 public @interface SpringBootApplication {
 
 	/**
 	 * Exclude specific auto-configuration classes such that they will never be applied.
-	 *
 	 * @return the classes to exclude
 	 */
 	@AliasFor(annotation = EnableAutoConfiguration.class)
@@ -73,7 +76,6 @@ public @interface SpringBootApplication {
 	/**
 	 * Exclude specific auto-configuration class names such that they will never be
 	 * applied.
-	 *
 	 * @return the class names to exclude
 	 * @since 1.3.0
 	 */
@@ -89,7 +91,6 @@ public @interface SpringBootApplication {
 	 * scanning or Spring Data {@link Repository} scanning. For those you should add
 	 * {@link org.springframework.boot.autoconfigure.domain.EntityScan @EntityScan} and
 	 * {@code @Enable...Repositories} annotations.
-	 *
 	 * @return base packages to scan
 	 * @since 1.3.0
 	 */
@@ -108,7 +109,6 @@ public @interface SpringBootApplication {
 	 * scanning or Spring Data {@link Repository} scanning. For those you should add
 	 * {@link org.springframework.boot.autoconfigure.domain.EntityScan @EntityScan} and
 	 * {@code @Enable...Repositories} annotations.
-	 *
 	 * @return base packages to scan
 	 * @since 1.3.0
 	 */
@@ -134,7 +134,6 @@ public @interface SpringBootApplication {
 	 * individually like when declared on non-{@code @Configuration} classes, a.k.a.
 	 * "@Bean Lite Mode" (see {@link Bean @Bean's javadoc}). It is therefore behaviorally
 	 * equivalent to removing the {@code @Configuration} stereotype.
-	 *
 	 * @return whether to proxy {@code @Bean} methods
 	 * @since 2.2
 	 */
